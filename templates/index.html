@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Sentiment & Trader Analytics</title>
+    
+    <!-- Bootstrap 5 CSS & JS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- AOS Animation CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', sans-serif; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .kpi-title { font-size: 0.8rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; color: #58a6ff; }
+        h5 { font-weight: 600; color: #f0f6fc; margin-bottom: 1rem; }
+        
+        /* Data Table Styling */
+        .table-responsive { max-height: 400px; overflow-y: auto; }
+        .table-dark { background-color: #161b22; color: #c9d1d9; }
+        .table-dark th { background-color: #21262d; color: #58a6ff; position: sticky; top: 0; z-index: 2; }
+        .nav-tabs .nav-link { color: #8b949e; border: none; font-weight: 600; }
+        .nav-tabs .nav-link.active { color: #58a6ff; background-color: #161b22; border-bottom: 2px solid #58a6ff; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="mb-4" data-aos="fade-down" data-aos-duration="800">
+            <h2>⚡ Hyperliquid Performance vs. Bitcoin Sentiment Dashboard</h2>
+            <p class="text-secondary">Explore behavioral biases, profitability, dynamic charts, and raw dataset previews.</p>
+        </header>
+
+        <!-- KPI Summary Bar -->
+        <div class="row g-3 mb-5">
+            <div class="col-md-2" data-aos="zoom-in" data-aos-delay="100">
+                <div class="card p-3">
+                    <div class="kpi-title">Total Closed PnL</div>
+                    <div class="kpi-value text-success" id="kpi-pnl">$0.00</div>
+                </div>
+            </div>
+            <div class="col-md-2" data-aos="zoom-in" data-aos-delay="200">
+                <div class="card p-3">
+                    <div class="kpi-title">Overall Win Rate</div>
+                    <div class="kpi-value text-warning" id="kpi-winrate">0%</div>
+                </div>
+            </div>
+            <div class="col-md-2" data-aos="zoom-in" data-aos-delay="300">
+                <div class="card p-3">
+                    <div class="kpi-title">Total Executions</div>
+                    <div class="kpi-value text-info" id="kpi-trades">0</div>
+                </div>
+            </div>
+            <div class="col-md-3" data-aos="zoom-in" data-aos-delay="400">
+                <div class="card p-3">
+                    <div class="kpi-title">Total Volume (USD)</div>
+                    <div class="kpi-value" id="kpi-volume">$0.00</div>
+                </div>
+            </div>
+            <div class="col-md-3" data-aos="zoom-in" data-aos-delay="500">
+                <div class="card p-3">
+                    <div class="kpi-title">Total Paid Fees</div>
+                    <div class="kpi-value text-danger" id="kpi-fees">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW SECTION: Interactive Dataset Preview Tables -->
+        <div class="row mb-5" data-aos="fade-up" data-aos-duration="1000">
+            <div class="col-12">
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5>📂 Dataset Previews</h5>
+                        <input type="text" id="datasetSearch" class="form-control form-control-sm w-25 bg-dark text-light border-secondary" placeholder="Search dataset rows...">
+                    </div>
+
+                    <!-- Dataset Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="datasetTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="trades-tab" data-bs-toggle="tab" data-bs-target="#trades-pane" type="button" role="tab">
+                                Historical Trader Data (Hyperliquid)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="sentiment-tab" data-bs-toggle="tab" data-bs-target="#sentiment-pane" type="button" role="tab">
+                                Bitcoin Fear & Greed Index
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="datasetTabContent">
+                        <!-- Trades Table Pane -->
+                        <div class="tab-pane fade show active" id="trades-pane" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped table-hover text-nowrap" id="tradesTable">
+                                    <thead><tr id="tradesHead"></tr></thead>
+                                    <tbody id="tradesBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="text-secondary small" id="tradesInfo">Showing 0 of 0 records</span>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" id="prevTradesBtn" onclick="changePage('trades', -1)">Previous</button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="nextTradesBtn" onclick="changePage('trades', 1)">Next</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sentiment Table Pane -->
+                        <div class="tab-pane fade" id="sentiment-pane" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped table-hover text-nowrap" id="sentimentTable">
+                                    <thead><tr id="sentimentHead"></tr></thead>
+                                    <tbody id="sentimentBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="text-secondary small" id="sentimentInfo">Showing 0 of 0 records</span>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" id="prevSentimentBtn" onclick="changePage('sentiment', -1)">Previous</button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="nextSentimentBtn" onclick="changePage('sentiment', 1)">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6" data-aos="fade-right" data-aos-duration="1000">
+                <div class="card p-3">
+                    <h5>Chart 1: Net PnL ($) by Sentiment Category</h5>
+                    <canvas id="pnlChart" height="200"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6" data-aos="fade-left" data-aos-duration="1000">
+                <div class="card p-3">
+                    <h5>Chart 2: Win Rate (%) across Market Regimes</h5>
+                    <canvas id="winrateChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-6" data-aos="fade-up" data-aos-duration="1000">
+                <div class="card p-3">
+                    <h5>Chart 3: Trading Volume (USD) by Sentiment Category</h5>
+                    <canvas id="volumeChart" height="200"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="200">
+                <div class="card p-3">
+                    <h5>Chart 4: Long (Buy) vs. Short (Sell) Volume Ratio</h5>
+                    <canvas id="sideChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-12" data-aos="flip-up" data-aos-duration="1000">
+                <div class="card p-3">
+                    <h5>Chart 5: Cumulative PnL Curve vs. Fear & Greed Index Over Time</h5>
+                    <canvas id="timeSeriesChart" height="120"></canvas>
+                </div>
+            </div>
+            <div class="col-md-12" data-aos="zoom-in-up" data-aos-duration="1000">
+                <div class="card p-3">
+                    <h5>Chart 6: Behavioral Clustering (Fear Trading Ratio vs. Win Rate)</h5>
+                    <canvas id="clusterChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AOS JS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
